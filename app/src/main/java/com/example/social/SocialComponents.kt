@@ -467,8 +467,21 @@ fun CreatePostScreen(
                                          .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
                                          .build()
                                      
-                                     val inputStream = context.contentResolver.openInputStream(selectedMediaUri!!)
-                                     val totalSize = inputStream?.available()?.toLong() ?: 0L
+                                     var totalSize = 0L
+                                     context.contentResolver.query(selectedMediaUri!!, null, null, null, null)?.use { cursor ->
+                                         if (cursor.moveToFirst()) {
+                                             val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                                             if (sizeIndex != -1) {
+                                                 totalSize = cursor.getLong(sizeIndex)
+                                             }
+                                         }
+                                     }
+                                     if (totalSize == 0L) {
+                                         // fallback
+                                         context.contentResolver.openInputStream(selectedMediaUri!!)?.use { 
+                                             totalSize = it.available().toLong() 
+                                         }
+                                     }
                                      
                                      val mimeTypeStr = context.contentResolver.getType(selectedMediaUri!!) ?: "video/mp4"
                                      val ext = if (mimeTypeStr.startsWith("image")) "jpg" else "mp4"
@@ -477,14 +490,14 @@ fun CreatePostScreen(
                                          override fun contentType(): okhttp3.MediaType? = mimeTypeStr.toMediaTypeOrNull()
                                          override fun contentLength(): Long = totalSize
                                          override fun writeTo(sink: okio.BufferedSink) {
-                                             inputStream?.use { input ->
+                                             context.contentResolver.openInputStream(selectedMediaUri!!)?.use { input ->
                                                  val buffer = ByteArray(8192)
                                                  var read: Int
                                                  var uploaded = 0L
                                                  while (input.read(buffer).also { read = it } != -1) {
                                                      sink.write(buffer, 0, read)
                                                      uploaded += read
-                                                     uploadProgress = (uploaded.toFloat() / totalSize.coerceAtLeast(1).toFloat())
+                                                     uploadProgress = (uploaded.toFloat() / totalSize.coerceAtLeast(1L).toFloat())
                                                  }
                                              }
                                          }

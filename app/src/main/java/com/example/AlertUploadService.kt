@@ -100,8 +100,18 @@ class AlertUploadService : Service() {
 
         Thread {
             try {
-                val inputStream = contentResolver.openInputStream(mediaUri)
-                val totalSize = inputStream?.available()?.toLong() ?: 0L
+                var totalSize = 0L
+                contentResolver.query(mediaUri, null, null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                        if (sizeIndex != -1) {
+                            totalSize = cursor.getLong(sizeIndex)
+                        }
+                    }
+                }
+                if (totalSize == 0L) {
+                    contentResolver.openInputStream(mediaUri)?.use { totalSize = it.available().toLong() }
+                }
 
                 val mimeType = if (mediaType == "photo") "image/jpeg" else "video/mp4"
                 val fieldName = if (mediaType == "photo") "photo" else "video"
@@ -111,7 +121,7 @@ class AlertUploadService : Service() {
                     override fun contentType(): MediaType? = mimeType.toMediaTypeOrNull()
                     override fun contentLength(): Long = totalSize
                     override fun writeTo(sink: BufferedSink) {
-                        inputStream?.use { input ->
+                        contentResolver.openInputStream(mediaUri)?.use { input ->
                             val buffer = ByteArray(8192)
                             var read: Int
                             var uploaded = 0L
@@ -119,7 +129,7 @@ class AlertUploadService : Service() {
                             while (input.read(buffer).also { read = it } != -1) {
                                 sink.write(buffer, 0, read)
                                 uploaded += read
-                                val currentProgress = ((uploaded * 100) / totalSize).toInt()
+                                val currentProgress = ((uploaded * 100) / totalSize.coerceAtLeast(1L)).toInt()
                                 if (currentProgress > lastUpdate) {
                                     notificationManager.notify(NOTIFICATION_ID, createProgressNotification(currentProgress, totalSize))
                                     lastUpdate = currentProgress.toLong()
