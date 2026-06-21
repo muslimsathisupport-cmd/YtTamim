@@ -947,32 +947,6 @@ fun HomeScreen(
 
         var isPrayerInfoExpanded by remember { mutableStateOf(false) }
 
-        // Categories Section Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(LocalAppStrings.current.categories, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextDark)
-        }
-        
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Categories Scrollable Row
-        CategoryScrollableRow(
-            onNavigateToTracker, 
-            onNavigateToQuran,
-            onNavigateToZakat,
-            onNavigateToCalendar,
-            onNavigateToQibla,
-            onNavigateToAllahNames = onNavigateToAllahNames,
-            onNavigateToRamadan = onNavigateToRamadan
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-
         // View All Button
         Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
             TextButton(
@@ -980,11 +954,7 @@ fun HomeScreen(
                 colors = ButtonDefaults.textButtonColors(contentColor = PrimaryGreen)
             ) {
                 Text(
-                    text = if (GlobalLanguage.isEnglish) {
-                        if (isPrayerInfoExpanded) "Hide Prayer Info" else "View All Prayer Info"
-                    } else {
-                        if (isPrayerInfoExpanded) "লুকান" else "অতিরিক্ত সালাতের সময় দেখুন"
-                    },
+                    text = "View All",
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier=Modifier.width(4.dp))
@@ -995,9 +965,9 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
         if (isPrayerInfoExpanded) {
+            Spacer(modifier = Modifier.height(8.dp))
+
             // Nafl Salat Section
             NaflSalatSection(state)
 
@@ -1027,11 +997,11 @@ fun HomeScreen(
                 ForbiddenTimeCard(LocalAppStrings.current.sunset, state.forbiddenSunset, state.forbiddenSunsetEnd, Icons.Outlined.WbTwilight)
             }
             
-            Spacer(modifier = Modifier.height(24.dp))
-        } else {
-            // "What's Your Mind" Section conditionally shown when hidden
-            WhatsOnYourMindSection(onNavigateToCreatePost = onNavigateToCreatePost)
+            Spacer(modifier = Modifier.height(16.dp))
         }
+
+        // "What's Your Mind" Section conditionally shown when hidden
+        WhatsOnYourMindSection(onNavigateToCreatePost = onNavigateToCreatePost)
 
         Spacer(modifier = Modifier.height(40.dp))
     }
