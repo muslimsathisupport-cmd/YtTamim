@@ -20,9 +20,12 @@ const s3 = new S3Client({
     },
 });
 
-// Configure multer for memory storage
+// Configure multer for disk storage to prevent memory overflow
+const os = require('os');
+const fs = require('fs');
+
 const upload = multer({ 
-    storage: multer.memoryStorage(),
+    dest: os.tmpdir(),
     limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit for videos and photos
 });
 
@@ -105,14 +108,19 @@ app.post('/api/upload', upload.single('media'), async (req, res) => {
         const fileExtension = req.file.originalname.split('.').pop();
         const fileName = `${uuidv4()}.${fileExtension}`;
         
+        const fileStream = fs.createReadStream(req.file.path);
+        
         const command = new PutObjectCommand({
             Bucket: process.env.R2_BUCKET_NAME,
             Key: fileName,
-            Body: req.file.buffer,
+            Body: fileStream,
             ContentType: req.file.mimetype,
         });
 
         await s3.send(command);
+        
+        // Clean up the temporary file
+        fs.unlinkSync(req.file.path);
         
         const bucketDomain = process.env.R2_CUSTOM_DOMAIN || `https://pub-${process.env.R2_ACCOUNT_ID}.r2.dev`;
         const fileUrl = `${bucketDomain}/${fileName}`;
@@ -128,7 +136,13 @@ app.post('/api/upload', upload.single('media'), async (req, res) => {
         });
     } catch (error) {
         console.error('R2 Upload Error:', error);
-        res.status(500).json({ error: 'Failed to upload media to Cloudflare R2 server.' });
+        
+        // Ensure temporary file is cleaned up if upload fails
+        if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        
+        res.status(500).json({ error: 'Failed to upload media to Cloudflare R2 server.', details: error.message });
     }
 });
 
