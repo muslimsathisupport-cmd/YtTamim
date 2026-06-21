@@ -943,12 +943,10 @@ fun HomeScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
         var isPrayerInfoExpanded by remember { mutableStateOf(false) }
 
         // View All Button
-        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             TextButton(
                 onClick = { isPrayerInfoExpanded = !isPrayerInfoExpanded },
                 colors = ButtonDefaults.textButtonColors(contentColor = PrimaryGreen)
@@ -966,12 +964,10 @@ fun HomeScreen(
         }
 
         if (isPrayerInfoExpanded) {
-            Spacer(modifier = Modifier.height(8.dp))
-
             // Nafl Salat Section
             NaflSalatSection(state)
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Forbidden Times
             Row(
@@ -997,13 +993,13 @@ fun HomeScreen(
                 ForbiddenTimeCard(LocalAppStrings.current.sunset, state.forbiddenSunset, state.forbiddenSunsetEnd, Icons.Outlined.WbTwilight)
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         // "What's Your Mind" Section conditionally shown when hidden
         WhatsOnYourMindSection(onNavigateToCreatePost = onNavigateToCreatePost)
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(20.dp))
     }
 }
 

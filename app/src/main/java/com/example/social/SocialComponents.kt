@@ -232,7 +232,7 @@ fun VideoPostCard(post: Post) {
                 )
             }
         } else {
-            // Video Player Placeholder
+            // Video Player using ExoPlayer
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -241,14 +241,25 @@ fun VideoPostCard(post: Post) {
                 contentAlignment = Alignment.Center
             ) {
                 if (post.mediaUrl.isNotEmpty()) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val exoPlayer = remember {
+                        androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
+                            setMediaItem(androidx.media3.common.MediaItem.fromUri(post.mediaUrl))
+                            repeatMode = androidx.media3.common.Player.REPEAT_MODE_ALL
+                            playWhenReady = true
+                            prepare()
+                        }
+                    }
+                    
+                    DisposableEffect(exoPlayer) {
+                        onDispose { exoPlayer.release() }
+                    }
+                    
                     androidx.compose.ui.viewinterop.AndroidView(
-                        factory = { context ->
-                            android.widget.VideoView(context).apply {
-                                setVideoURI(Uri.parse(post.mediaUrl))
-                                setOnPreparedListener { mp ->
-                                    mp.isLooping = true
-                                    start()
-                                }
+                        factory = { ctx ->
+                            androidx.media3.ui.PlayerView(ctx).apply {
+                                player = exoPlayer
+                                useController = true
                             }
                         },
                         modifier = Modifier.fillMaxSize()
@@ -462,9 +473,9 @@ fun CreatePostScreen(
                              coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                                  try {
                                      val client = okhttp3.OkHttpClient.Builder()
-                                         .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                                         .writeTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
-                                         .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                                         .connectTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+                                         .writeTimeout(600, java.util.concurrent.TimeUnit.SECONDS)
+                                         .readTimeout(600, java.util.concurrent.TimeUnit.SECONDS)
                                          .build()
                                      
                                      var totalSize = 0L
@@ -514,8 +525,8 @@ fun CreatePostScreen(
                                          .build()
                                          
                                      val response = client.newCall(request).execute()
+                                     val responseString = response.body?.string()
                                      if (response.isSuccessful) {
-                                         val responseString = response.body?.string()
                                          val json = org.json.JSONObject(responseString ?: "{}")
                                          val urlStr = json.optJSONObject("media")?.optString("url", "") ?: ""
                                          
@@ -544,12 +555,23 @@ fun CreatePostScreen(
                                          }
                                          
                                          com.example.social.GlobalPostState.addPost(newPost)
-                                     } 
+                                         
+                                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                             onNavigateBack()
+                                         }
+                                     } else {
+                                         val errStr = responseString ?: "Unknown Error"
+                                         val errCode = response.code
+                                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                             android.widget.Toast.makeText(context, "Upload failed! Code $errCode: $errStr", android.widget.Toast.LENGTH_LONG).show()
+                                             isUploading = false
+                                         }
+                                     }
                                  } catch(e: Exception) {
                                      e.printStackTrace()
-                                 } finally {
                                      kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                         onNavigateBack()
+                                         android.widget.Toast.makeText(context, "Network Error: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                                         isUploading = false
                                      }
                                  }
                              }
